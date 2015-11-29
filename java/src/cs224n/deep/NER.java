@@ -30,5 +30,6 @@ public class NER {
 	//TODO: Implement those two functions
 	//model.train(trainData);
 	//model.test(testData);
+	
     }
 }
