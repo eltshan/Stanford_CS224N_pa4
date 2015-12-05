@@ -13,7 +13,7 @@ public class NER {
 			return;
 		}
 
-		int T = 10;
+		int T = 50;
 
 		FeatureFactory.readWordVectors("../data/wordVectors.txt");
 		FeatureFactory.initializeVocab("../data/vocab.txt");
@@ -23,10 +23,10 @@ public class NER {
 		WindowModel model = new WindowModel(0, 50, 0.01);
 		model.initWeights();
 		model.train(trainData);
-		// for (int i = 0; i < T; i++) {
-		// model.train(trainData);
-		//
-		// }
+		for (int i = 0; i < T; i++) {
+			model.train(trainData);
+
+		}
 		model.test(testData);
 
 		// this reads in the train and test datasets
