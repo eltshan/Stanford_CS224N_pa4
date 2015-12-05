@@ -29,6 +29,10 @@ public class NER {
 		// model.initWeights();
 
 		// TODO: Implement those two functions
+
+		FeatureFactory.readWordVectors("./wordVectors.txt");
+		FeatureFactory.initializeVocab("./vocab.txt");
+		// model.initWeights();
 		System.out.println("start  training");
 		model.train(trainData);
 		System.out.println("start  testing");
