@@ -27,7 +27,7 @@ public class NER {
 		// model.train(trainData);
 		//
 		// }
-		model.test(trainData);
+		model.test(testData);
 
 		// this reads in the train and test datasets
 

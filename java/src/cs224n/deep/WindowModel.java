@@ -196,7 +196,7 @@ public class WindowModel {
 			}
 			System.out.println(datum.word + "\t" + gold + "\t" + predicted);
 		}
-		//System.out.println("done" + correct / testData.size());
+		// System.out.println("done" + correct / testData.size());
 		// out.close();
 	}
 
@@ -289,7 +289,7 @@ public class WindowModel {
 		FeatureFactory.readWordVectors(dataDir + "/wordVectors.txt");
 		FeatureFactory.initializeVocab(dataDir + "/vocab.txt");
 		List<Datum> trainData = FeatureFactory.readTrainData(dataDir + "/train");
-		FeatureFactory.readTestData(dataDir + "/dev");
+		List<Datum> testData = FeatureFactory.readTestData(dataDir + "/dev");
 
 		WindowModel model = new WindowModel(0, 50, 0.01);
 		model.initWeights();
@@ -299,7 +299,7 @@ public class WindowModel {
 
 			model.train(trainData);
 
-			model.test(trainData);
+			model.test(testData);
 		}
 
 	}
