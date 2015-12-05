@@ -19,9 +19,9 @@ public class NER {
 		FeatureFactory.initializeVocab("../data/vocab.txt");
 		List<Datum> trainData = FeatureFactory.readTrainData(args[0]);
 		List<Datum> testData = FeatureFactory.readTestData(args[1]);
-		BaselineModel model = new BaselineModel();
-		// WindowModel model = new WindowModel(0, 50, 0.01);
-		// model.initWeights();
+		// BaselineModel model = new BaselineModel();
+		WindowModel model = new WindowModel(0, 50, 0.01);
+		model.initWeights();
 		model.train(trainData);
 		// for (int i = 0; i < T; i++) {
 		// model.train(trainData);
