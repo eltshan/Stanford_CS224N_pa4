@@ -19,6 +19,8 @@ public class WindowModel {
 	private static final String[] LABELS = { "O", "LOC", "MISC", "ORG", "PER" };
 	public double lr;
 	private static HashMap<String, Integer> labels = new HashMap<String, Integer>();
+	double lambda = 1e-4;
+	private static final double DIFF_THRESHOLD = 5e-7;
 
 	public WindowModel(int _windowSize, int _hiddenSize, double _lr) {
 		windowSize = 3;
@@ -99,6 +101,67 @@ public class WindowModel {
 
 			SimpleMatrix dx = W.transpose().mult(db1);
 
+			for (int j = 0; j < b2.numRows(); j++) {
+				SimpleMatrix b2Prime = b2.copy();
+				b2Prime.set(j, 0, b2.get(j, 0) + lambda);
+				SimpleMatrix p1 = softmax(U.mult(h).plus(b2Prime));
+				b2Prime.set(j, 0, b2.get(j, 0) - lambda);
+				SimpleMatrix p2 = softmax(U.mult(h).plus(b2Prime));
+				checkGradient(y, p1, p2, db2.get(j, 0));
+			}
+
+			// check U
+			for (int r = 0; r < U.numRows(); r++) {
+				for (int c = 0; c < U.numCols(); c++) {
+					SimpleMatrix UPrime = U.copy();
+					UPrime.set(r, c, U.get(r, c) + lambda);
+					SimpleMatrix p1 = softmax(UPrime.mult(h).plus(b2));
+					UPrime.set(r, c, U.get(r, c) - lambda);
+					SimpleMatrix p2 = softmax(UPrime.mult(h).plus(b2));
+					checkGradient(y, p1, p2, dU.get(r, c));
+				}
+			}
+
+			// check b1
+			for (int r = 0; r < b1.numRows(); r++) {
+				SimpleMatrix b1Prime = b1.copy();
+				b1Prime.set(r, 0, b1.get(r, 0) + lambda);
+				SimpleMatrix hPrime = tanh(W.mult(x).plus(b1Prime));
+				SimpleMatrix p1 = softmax(U.mult(hPrime).plus(b2));
+				b1Prime.set(r, 0, b1.get(r, 0) - lambda);
+				hPrime = tanh(W.mult(x).plus(b1Prime));
+				SimpleMatrix p2 = softmax(U.mult(hPrime).plus(b2));
+				checkGradient(y, p1, p2, db1.get(r, 0));
+			}
+
+			// check W
+			for (int r = 0; r < W.numRows(); r++) {
+				// check every third element to speed up
+				for (int c = 0; c < W.numCols(); c += 3) {
+					SimpleMatrix WPrime = W.copy();
+					WPrime.set(r, c, W.get(r, c) + lambda);
+					SimpleMatrix hPrime = tanh(WPrime.mult(x).plus(b1));
+					SimpleMatrix p1 = softmax(U.mult(hPrime).plus(b2));
+					WPrime.set(r, c, W.get(r, c) - lambda);
+					hPrime = tanh(WPrime.mult(x).plus(b1));
+					SimpleMatrix p2 = softmax(U.mult(hPrime).plus(b2));
+					checkGradient(y, p1, p2, dW.get(r, c));
+				}
+			}
+
+			// check x
+			// check every other element to speed up
+			for (int r = 0; r < x.numRows(); r += 2) {
+				SimpleMatrix xPrime = x.copy();
+				xPrime.set(r, 0, x.get(r, 0) + lambda);
+				SimpleMatrix hPrime = tanh(W.mult(xPrime).plus(b1));
+				SimpleMatrix p1 = softmax(U.mult(hPrime).plus(b2));
+				xPrime.set(r, 0, x.get(r, 0) - lambda);
+				hPrime = tanh(W.mult(xPrime).plus(b1));
+				SimpleMatrix p2 = softmax(U.mult(hPrime).plus(b2));
+				checkGradient(y, p1, p2, dx.get(r, 0));
+			}
+
 			b2 = b2.plus(-lr, db2);
 			U = U.plus(-lr, dU);
 			b1 = b1.plus(-lr, db1);
@@ -111,7 +174,6 @@ public class WindowModel {
 	}
 
 	public void train(List<Datum> _trainData) {
-		double lambda = 1e-4;
 		SimpleMatrix[] h_array = new SimpleMatrix[num_of_layers];
 		SimpleMatrix[] z_array = new SimpleMatrix[num_of_layers];
 		SimpleMatrix[] db_array = new SimpleMatrix[num_of_layers];
@@ -182,19 +244,18 @@ public class WindowModel {
 			if (datum.word.equals("<s>") || datum.word.equals("</s>'"))
 				continue;
 
-			String gold = datum.label.equals("O") ? "O" : "I-" + datum.label;
+			String gold = datum.label;
 
 			// make prediction
 			SimpleMatrix x = getTrainingWinodw(testData, i);
 			SimpleMatrix scores = score(x);
 			String predicted = LABELS[getArgMaxIndex(scores)];
-			if (!predicted.equals("O")) {
-				predicted = "I-" + predicted;
-			}
+
 			if (gold.equals(predicted)) {
 				correct++;
+			} else {
+				System.out.println(datum.word + "\t" + gold + "\t" + predicted);
 			}
-			System.out.println(datum.word + "\t" + gold + "\t" + predicted);
 		}
 		// System.out.println("done" + correct / testData.size());
 		// out.close();
@@ -212,6 +273,28 @@ public class WindowModel {
 	private SimpleMatrix score_tmp(SimpleMatrix x) {
 		SimpleMatrix h = tanh(W.mult(x).plus(b1));
 		return softmax(U.mult(h).plus(b2));
+	}
+
+	private void checkGradient(SimpleMatrix y, SimpleMatrix p1, SimpleMatrix p2, double gradient) {
+		double slope = (computeLoss(y, p1) - computeLoss(y, p2)) / (2 * lambda);
+		if (Math.abs(slope - gradient) > DIFF_THRESHOLD) {
+			throw new AssertionError(
+					String.format("Gradient check failed: wanted: %.8f, actual: %.8f", slope, gradient));
+		}
+	}
+
+	private double computeLoss(SimpleMatrix y, SimpleMatrix p) {
+		double loss = 0;
+		for (int i = 0; i < y.numRows(); i++) {
+			loss -= y.get(i, 0) * Math.log(p.get(i, 0));
+		}
+		loss += computeSquaredMatrixSum(W) * lambda / 2;
+		loss += computeSquaredMatrixSum(U) * lambda / 2;
+		return loss;
+	}
+
+	private double computeSquaredMatrixSum(SimpleMatrix m) {
+		return m.elementMult(m).elementSum();
 	}
 
 	private SimpleMatrix score(SimpleMatrix x) {

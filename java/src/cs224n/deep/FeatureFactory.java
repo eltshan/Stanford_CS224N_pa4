@@ -79,7 +79,6 @@ public class FeatureFactory {
 		File f = new File(vecFilename);
 		int numOfRows = 100232;// (int) f.length();
 		int numOfCols = 50;
-		System.out.println(numOfRows + " " + numOfCols);
 		BufferedReader br = new BufferedReader(new FileReader(vecFilename));
 
 		double[][] tmpMatrixs = new double[numOfRows + 1][numOfCols];
