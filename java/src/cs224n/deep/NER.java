@@ -29,7 +29,10 @@ public class NER {
 		// model.initWeights();
 
 		// TODO: Implement those two functions
+		System.out.println("start  training");
 		model.train(trainData);
+		System.out.println("start  testing");
+
 		model.test(testData);
 
 	}
