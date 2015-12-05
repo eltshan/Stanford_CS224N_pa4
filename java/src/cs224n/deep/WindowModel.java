@@ -253,9 +253,9 @@ public class WindowModel {
 
 			if (gold.equals(predicted)) {
 				correct++;
-			} else {
-				System.out.println(datum.word + "\t" + gold + "\t" + predicted);
 			}
+			System.out.println(datum.word + "\t" + gold + "\t" + predicted);
+
 		}
 		// System.out.println("done" + correct / testData.size());
 		// out.close();
