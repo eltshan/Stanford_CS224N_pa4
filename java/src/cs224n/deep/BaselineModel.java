@@ -6,7 +6,7 @@ import java.util.List;
 
 public class BaselineModel {
 
-	private HashMap<String, String> map;
+	private HashMap<String, String> map = new HashMap<String, String>();
 
 	public void train(List<Datum> _trainData) {
 		for (Datum datum : _trainData) {
