@@ -18,6 +18,8 @@ public class BaselineModel {
 	public void test(List<Datum> testData) {
 		String label = "O";
 		for (Datum datum : testData) {
+			if (datum.word.startsWith("<"))
+				continue;
 			// if (datum.label != "O")
 			// map.add(datum.word);
 			label = "O";
