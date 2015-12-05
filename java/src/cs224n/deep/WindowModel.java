@@ -11,10 +11,11 @@ import java.text.*;
 
 public class WindowModel {
 
-	protected SimpleMatrix L, W, Wout, U, b1, b2;
+	protected SimpleMatrix L, W, W1, W2, Wout, U, b1, b2, b3;
+	protected ArrayList<SimpleMatrix> weight_array, b_array;
 	//
-	public int windowSize, wordSize, hiddenSize, K;
-
+	public int num_of_layers, windowSize, wordSize, hiddenSize, hiddenSize_1, hiddenSize_2, K;
+	public ArrayList<Integer> size_array;
 	private static final String[] LABELS = { "O", "LOC", "MISC", "ORG", "PER" };
 	public double lr;
 	private static HashMap<String, Integer> labels = new HashMap<String, Integer>();
@@ -24,13 +25,25 @@ public class WindowModel {
 		wordSize = 50;
 		K = 5;
 		hiddenSize = _hiddenSize;
+		hiddenSize_1 = _hiddenSize;
+		hiddenSize_2 = 10;
+		lr = _lr;
+	}
+
+	public WindowModel(int _windowSize, int _hiddenSize, double _lr, int num_of_layers, ArrayList<Integer> size_array) {
+		windowSize = 3;
+		wordSize = 50;
+		K = 5;
+		hiddenSize = _hiddenSize;
+		hiddenSize_1 = _hiddenSize;
+		hiddenSize_2 = 10;
 		lr = _lr;
 	}
 
 	/**
 	 * Initializes the weights randomly.
 	 */
-	public void initWeights() {
+	public void initWeights_tmp() {
 		labels.put("O", 0);
 		labels.put("LOC", 1);
 		labels.put("MISC", 2);
@@ -44,10 +57,26 @@ public class WindowModel {
 		b2 = new SimpleMatrix(K, 1);
 	}
 
+	public void initWeights() {
+		labels.put("O", 0);
+		labels.put("LOC", 1);
+		labels.put("MISC", 2);
+		labels.put("ORG", 3);
+		labels.put("PER", 4);
+
+		W1 = SimpleMatrix.random(hiddenSize_1, windowSize * wordSize, -1, 1, new Random());
+		W2 = SimpleMatrix.random(hiddenSize_2, hiddenSize_1, -1, 1, new Random());
+		U = SimpleMatrix.random(K, hiddenSize_2, -1, 1, new Random());
+
+		b1 = new SimpleMatrix(hiddenSize_1, 1);
+		b2 = new SimpleMatrix(hiddenSize_2, 1);
+		b3 = new SimpleMatrix(K, 1);
+	}
+
 	/**
 	 * Simplest SGD training
 	 */
-	public void train(List<Datum> _trainData) {
+	public void train_tmp(List<Datum> _trainData) {
 		double lambda = 1e-4;
 		for (int i = 1; i < _trainData.size() - 1; i++) {
 			SimpleMatrix x = getTrainingWinodw(_trainData, i);
@@ -57,13 +86,13 @@ public class WindowModel {
 
 			SimpleMatrix y = new SimpleMatrix(K, 1);
 			y.set(labels.get(_trainData.get(i).label), 0, 1);
-			SimpleMatrix diff_p_y = p.minus(y);
+			SimpleMatrix diff = p.minus(y);
 			SimpleMatrix db2 = p.minus(y);
 
-			SimpleMatrix dU = diff_p_y.mult(h.transpose());
+			SimpleMatrix dU = diff.mult(h.transpose());
 			dU.plus(lambda, U);
 
-			SimpleMatrix db1 = derivativeTanh(h).elementMult(U.transpose().mult(diff_p_y));
+			SimpleMatrix db1 = derivativeTanh(h).elementMult(U.transpose().mult(diff));
 
 			SimpleMatrix dW = db1.mult(x.transpose());
 			dW.plus(lambda, W);
@@ -81,35 +110,62 @@ public class WindowModel {
 		}
 	}
 
-	public void train2(List<Datum> _trainData) {
+	public void train(List<Datum> _trainData) {
 		double lambda = 1e-4;
-		for (int i = 1; i < _trainData.size() - 1; i++) {
-			SimpleMatrix x = getTrainingWinodw(_trainData, i);
+		SimpleMatrix[] h_array = new SimpleMatrix[num_of_layers];
+		SimpleMatrix[] z_array = new SimpleMatrix[num_of_layers];
+		SimpleMatrix[] db_array = new SimpleMatrix[num_of_layers];
+		SimpleMatrix[] dw_array = new SimpleMatrix[num_of_layers];
 
-			SimpleMatrix h = tanh(W.mult(x).plus(b1));
-			SimpleMatrix p = softmax(U.mult(h).plus(b2));
+		for (int i = 1; i < _trainData.size() - 1; i++) {
+			// h_array[0] = getTrainingWinodw(_trainData, i);
+			// for (int j = 1; j <= num_of_layers; j++) {
+			// z_array[j] = weight_array.get(j).mult(h_array[j -
+			// 1]).plus(b_array.get(j));
+			// h_array[j] = tanh(z_array[j]);
+			// }
+			//
+			// SimpleMatrix p = softmax(U.mult(h2).plus(b3));
+			//
+			// for (int j = 1; j <= num_of_layers; j++) {
+			// db_array[j] = weight_array.get(j).mult(h_array[j -
+			// 1]).plus(b_array.get(j));
+			// dw_array[j] = tanh(z_array[j]);
+			// }
+			SimpleMatrix x = getTrainingWinodw(_trainData, i);
+			SimpleMatrix z1 = W1.mult(x).plus(b1);
+			SimpleMatrix h1 = tanh(z1);
+
+			SimpleMatrix z2 = W2.mult(h1).plus(b2);
+			SimpleMatrix h2 = tanh(z2);
+
+			SimpleMatrix p = softmax(U.mult(h2).plus(b3));
 
 			SimpleMatrix y = new SimpleMatrix(K, 1);
 			y.set(labels.get(_trainData.get(i).label), 0, 1);
-			SimpleMatrix diff_p_y = p.minus(y);
-			SimpleMatrix db2 = p.minus(y);
+			SimpleMatrix diff = p.minus(y);
+			SimpleMatrix db3 = p.minus(y);
 
-			SimpleMatrix dU = diff_p_y.mult(h.transpose());
+			SimpleMatrix dU = diff.mult(h2.transpose());
 			dU.plus(lambda, U);
 
-			SimpleMatrix db1 = derivativeTanh(h).elementMult(U.transpose().mult(diff_p_y));
+			SimpleMatrix db2 = derivativeTanh(h2).elementMult(U.transpose().mult(diff));
 
-			SimpleMatrix dW = db1.mult(x.transpose());
-			dW.plus(lambda, W);
+			SimpleMatrix dW2 = db2.mult(h1.transpose());
+			dW2.plus(lambda, W2);
 
-			SimpleMatrix dx = W.transpose().mult(db1);
+			SimpleMatrix db1 = derivativeTanh(h1).elementMult(W2.transpose().mult(db2));
+			SimpleMatrix dW1 = db1.mult(x.transpose());
 
-//			b3 = b3.plus(-lr, db3);
-//			W2 = W2.plus(-lr, d);	
+			SimpleMatrix dx = W1.transpose().mult(db1);
+			dW1.plus(lambda, W1);
+
+			b3 = b3.plus(-lr, db3);
 			b2 = b2.plus(-lr, db2);
 			U = U.plus(-lr, dU);
 			b1 = b1.plus(-lr, db1);
-			W = W.plus(-lr, dW);
+			W2 = W2.plus(-lr, dW2);
+			W1 = W1.plus(-lr, dW1);
 			x = x.plus(-lr, dx);
 
 			/////////
@@ -152,9 +208,16 @@ public class WindowModel {
 		return idx;
 	}
 
-	private SimpleMatrix score(SimpleMatrix x) {
+	private SimpleMatrix score_tmp(SimpleMatrix x) {
 		SimpleMatrix h = tanh(W.mult(x).plus(b1));
 		return softmax(U.mult(h).plus(b2));
+	}
+
+	private SimpleMatrix score(SimpleMatrix x) {
+		SimpleMatrix h1 = tanh(W1.mult(x).plus(b1));
+		SimpleMatrix h2 = tanh(W2.mult(h1).plus(b2));
+		// SimpleMatrix h = tanh(W2.mult(tanh(W1.mult(x).plus(b1)).plus(b2)));
+		return softmax(U.mult(h2).plus(b3));
 	}
 
 	private SimpleMatrix getTrainingWinodw(List<Datum> _trainData, int index) {
@@ -198,7 +261,6 @@ public class WindowModel {
 	}
 
 	private SimpleMatrix derivativeTanh(SimpleMatrix h) {
-		// SimpleMatrix result = h.copy();
 		SimpleMatrix result = new SimpleMatrix(h);
 		for (int r = 0; r < result.numRows(); r++) {
 			double tanh = result.get(r, 0);
