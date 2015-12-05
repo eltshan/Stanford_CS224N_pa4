@@ -23,15 +23,13 @@ public class NER {
 		SimpleMatrix allVecs = FeatureFactory.readWordVectors("../data/wordVectors.txt");
 
 		// initialize model
-		WindowModel model = new WindowModel(5, 100, 0.001);
-		// BaselineModel model = new BaselineModel();
+		// WindowModel model = new WindowModel(5, 100, 0.001);
+		BaselineModel model = new BaselineModel();
 
 		// model.initWeights();
 
 		// TODO: Implement those two functions
 
-		FeatureFactory.readWordVectors("./wordVectors.txt");
-		FeatureFactory.initializeVocab("./vocab.txt");
 		// model.initWeights();
 		System.out.println("start  training");
 		model.train(trainData);
