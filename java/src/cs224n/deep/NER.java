@@ -14,13 +14,15 @@ public class NER {
 		}
 
 		// this reads in the train and test datasets
-		List<Datum> trainData = FeatureFactory.readTrainData(args[0]);
-		List<Datum> testData = FeatureFactory.readTestData(args[1]);
 
 		// read the train and test data
 		// TODO: Implement this function (just reads in vocab and word vectors)
+		// SimpleMatrix allVecs =
+		FeatureFactory.readWordVectors("../data/wordVectors.txt");
 		FeatureFactory.initializeVocab("../data/vocab.txt");
-		SimpleMatrix allVecs = FeatureFactory.readWordVectors("../data/wordVectors.txt");
+
+		List<Datum> trainData = FeatureFactory.readTrainData(args[0]);
+		List<Datum> testData = FeatureFactory.readTestData(args[1]);
 
 		System.out.println(trainData.size());
 		// initialize model
